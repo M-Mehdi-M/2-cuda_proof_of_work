@@ -1,30 +1,30 @@
-tema 2 - Cuda Proof Of Work
+**2 - CUDA Proof of Work**
 
-Aplicatia implementeaza un miner simplificat de blockchain care ruleaza pe GPU folosind CUDA.
-Fiecare bloc contine hash-ul blocului anterior, Merkle root-ul tranzactiilor si un nonce gasit
-prin Proof-of-Work pe GPU, toate calculele fiind accelerate pe placa grafica.
+The application implements a simplified blockchain miner that runs on the GPU using CUDA.
+Each block contains the hash of the previous block, the Merkle root of the transactions, and a nonce found
+through Proof-of-Work on the GPU, with all computations accelerated on the graphics card.
 
-Constructia Merkle root pe GPU:
-Se folosesc doua kernel-uri CUDA pentru a ridica arborele Merkle nivel cu nivel.
-initial_hash_kernel: fiecare thread calculeaza SHA256 pe o tranzactie si scrie hash-ul in
-bufferul initial.
-combine_hashes_kernel: fiecare thread combina perechi de hash-uri (duplicand ultimul hash daca
-numarul e impar), concateneaza cele doua string-uri si aplica SHA256 pentru nivelul urmator.
-Rezultatul final, Merkle root-ul (64 caractere hex + terminator), este copiat inapoi pe host.
+**Building the Merkle root on the GPU:**
+Two CUDA kernels are used to build the Merkle tree level by level.
+initial_hash_kernel: each thread computes SHA256 on one transaction and writes the hash into
+the initial buffer.
+combine_hashes_kernel: each thread combines pairs of hashes (duplicating the last hash if
+the count is odd), concatenates the two strings, and applies SHA256 for the next level.
+The final result, the Merkle root (64 hex characters + terminator), is copied back to the host.
 
-Cautarea nonce-ului (Proof of Work) pe GPU:
-Se lanseaza un kernel masiv, find_nonce_kernel, unde fiecare thread incearca un nonce diferit.
-Fiecare thread preia continutul de baza al blocului si ataseaza reprezentarea string a nonce-ului.
-Aplica SHA256 si, daca hash-ul rezultat e mai mic sau egal decat dificultatea (prefix de zerouri),
-foloseste operatii atomice (atomicMin/atomicExch) pentru a retine cel mai mic nonce valid gasit.
-Dupa sincronizare, host-ul recupereaza nonce-ul gasit si recompune hash-ul final pentru iesire.
+**Nonce search (Proof of Work) on the GPU:**
+A massive kernel, find_nonce_kernel, is launched, where each thread tries a different nonce.
+Each thread takes the base content of the block and appends the string representation of the nonce.
+It applies SHA256 and, if the resulting hash is less than or equal to the difficulty (a prefix of zeros),
+it uses atomic operations (atomicMin/atomicExch) to keep track of the smallest valid nonce found.
+After synchronization, the host retrieves the found nonce and reconstructs the final hash for output.
 
-Flow-ul aplicatiei:
-warm_up_gpu: aloca si elibereaza un buffer dummy pe GPU pentru a initializa driverele.
-miner.cpp citeste fisierul de test, grupand tranzactiile in blocuri de maxim N tranzactii.
-Pentru fiecare bloc: se apeleaza construct_merkle_root pe GPU si se masoara timpul de calcul,
-se construieste continutul blocului (prev_hash + merkle_root) pe host,
-se apeleaza find_nonce pe GPU si se masoara timpul de gasire nonce si dupa
-se scrie in fisierul de iesire BLOCK_ID, NONCE, BLOCK_HASH, timpii pentru Merkle si Proof-of-Work.
-La final se scriu timpii totali cumulati.
-Am adaugat si comentarii detaliate in cod pentru a usura intelegerea fiecarei parti a programului.
+**Application flow:**
+warm_up_gpu: allocates and frees a dummy buffer on the GPU to initialize the drivers.
+miner.cpp reads the test file, grouping transactions into blocks of at most N transactions.
+For each block: construct_merkle_root is called on the GPU and the computation time is measured,
+the block content (prev_hash + merkle_root) is built on the host,
+find_nonce is called on the GPU and the nonce-finding time is measured, and afterward
+the output file is written with BLOCK_ID, NONCE, BLOCK_HASH, and the Merkle and Proof-of-Work times.
+At the end, the cumulative total times are written.
+I also added detailed comments in the code to make it easier to understand each part of the program.
